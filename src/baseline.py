@@ -62,10 +62,20 @@ def build_and_eval_baseline(
 
     pipe = Pipeline(steps=[("preprocess", pre), ("model", model)])
 
-    stratify = y if problem_type == "classification" and y.nunique(dropna=True) > 1 else None
-    X_train, X_test, y_train, y_test = train_test_split(
-        X, y, test_size=test_size, random_state=random_state, stratify=stratify
-    )
+    stratify = None
+    notes = []
+
+    if problem_type == "classification":
+        class_counts = y.value_counts(dropna=True)
+    if (class_counts >= 2).all():
+        stratify = y
+    else:
+        rare_classes = class_counts[class_counts < 2].index.tolist()
+        notes.append(
+            f"Stratified split skipped due to rare classes: {rare_classes}"
+        )
+
+
 
     pipe.fit(X_train, y_train)
     preds = pipe.predict(X_test)
