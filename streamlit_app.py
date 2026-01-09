@@ -17,8 +17,6 @@ if uploaded is None:
     st.stop()
 
 df = pd.read_csv(uploaded)
-st.subheader("Preview")
-st.dataframe(df.head(20), use_container_width=True)
 
 with st.sidebar:
     st.header("Target selection")
