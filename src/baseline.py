@@ -46,13 +46,10 @@ def build_and_eval_baseline(
         remainder="drop",
     )
 
-    # Pick a robust baseline:
-    # - Classification: LogisticRegression if sparse/high-dim; else HistGB is strong too.
-    # We'll run ONE baseline for speed: HistGB (needs dense) can be tricky with sparse one-hot,
-    # so default to LogisticRegression for classification, Ridge for regression.
+    # Model choice + notes (define ONCE)
     notes = []
     if problem_type == "classification":
-        model = LogisticRegression(max_iter=2000, n_jobs=None)
+        model = LogisticRegression(max_iter=2000)
         model_name = "LogisticRegression(max_iter=2000)"
         notes.append("Using Logistic Regression as fast, reliable baseline for classification.")
     else:
@@ -62,20 +59,25 @@ def build_and_eval_baseline(
 
     pipe = Pipeline(steps=[("preprocess", pre), ("model", model)])
 
+    # Stratify only if every class has >=2 samples
     stratify = None
-    notes = []
-
     if problem_type == "classification":
         class_counts = y.value_counts(dropna=True)
-    if (class_counts >= 2).all():
-        stratify = y
-    else:
-        rare_classes = class_counts[class_counts < 2].index.tolist()
-        notes.append(
-            f"Stratified split skipped due to rare classes: {rare_classes}"
-        )
+        if y.nunique(dropna=True) > 1 and (class_counts >= 2).all():
+            stratify = y
+        else:
+            rare_classes = class_counts[class_counts < 2].index.tolist()
+            if rare_classes:
+                notes.append(f"Stratified split skipped due to rare classes: {rare_classes}")
 
-
+    # ✅ THIS was missing in your code (defines X_train/X_test/y_train/y_test)
+    X_train, X_test, y_train, y_test = train_test_split(
+        X,
+        y,
+        test_size=test_size,
+        random_state=random_state,
+        stratify=stratify,
+    )
 
     pipe.fit(X_train, y_train)
     preds = pipe.predict(X_test)
@@ -85,15 +87,17 @@ def build_and_eval_baseline(
             "accuracy": float(accuracy_score(y_test, preds)),
             "f1_macro": float(f1_score(y_test, preds, average="macro")),
         }
-        # AUC only for binary + if predict_proba available
+
+        # ROC-AUC only for binary + proba available
         if y_test.nunique(dropna=True) == 2 and hasattr(pipe.named_steps["model"], "predict_proba"):
             proba = pipe.predict_proba(X_test)[:, 1]
             try:
                 metrics["roc_auc"] = float(roc_auc_score(y_test, proba))
             except Exception:
-                pass
+                notes.append("ROC-AUC failed to compute (possibly due to label encoding).")
         else:
-            notes.append("ROC-AUC not computed (non-binary target or proba not available).")
+            notes.append("ROC-AUC not computed (non-binary target or predict_proba unavailable).")
+
     else:
         metrics = {
             "mae": float(mean_absolute_error(y_test, preds)),
