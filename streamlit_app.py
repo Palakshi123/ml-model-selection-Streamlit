@@ -5,10 +5,10 @@ from src.profiling import profile_dataset
 from src.recommend import recommend_models
 from src.baseline import build_and_eval_baseline
 
-st.set_page_config(page_title="ML Model Chooser", layout="wide")
+st.set_page_config(page_title="ML Model ", layout="wide")
 
-st.title("ML Model Chooser (Dataset → Model Recommendations)")
-st.caption("Upload a CSV, pick a target, and get model suggestions + a runnable baseline.")
+st.title("Machine Learning Model Selector Advisor")
+st.caption("Automatically analyze your dataset and recommend the best ML models")
 
 uploaded = st.file_uploader("Upload CSV", type=["csv"])
 
