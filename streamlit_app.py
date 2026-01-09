@@ -19,6 +19,9 @@ def simplify_rationale(rationale_list):
         "high dimensional": "You have many columns, and this model can handle that.",
         "imbalanced": "Your target labels are uneven, and this model handles that well.",
         "baseline": "This is a good starting model for beginners.",
+        "overfit": "This choice helps reduce overfitting (memorizing instead of learning).",
+        "noise": "This model tends to handle noisy real-world data well.",
+        "outlier": "This model is less sensitive to extreme values (outliers).",
     }
 
     results = []
@@ -55,8 +58,53 @@ def problem_type_sentence(profile, df, target_col):
     return "The problem type could not be confidently determined."
 
 
+def format_advanced_block(profile, rec):
+    """
+    Shows technical rationale + a few key dataset signals (if available).
+    This is intentionally flexible because profile schema can vary.
+    """
+    lines = []
+
+    # Technical rationale from recommender (as-is)
+    tech = rec.get("rationale", []) or []
+    if tech:
+        lines.append("**Technical rationale (from the recommender):**")
+        for t in tech:
+            lines.append(f"- {t}")
+    else:
+        lines.append("**Technical rationale:** (none provided)")
+
+    # Key dataset signals (best-effort, only if present)
+    lines.append("")
+    lines.append("**Key dataset signals used (if available):**")
+    keys_of_interest = [
+        "problem_type",
+        "n_rows",
+        "n_cols",
+        "target_dtype",
+        "target_nunique",
+        "missingness_overall",
+        "class_balance",
+        "n_numeric",
+        "n_categorical",
+    ]
+
+    shown_any = False
+    for k in keys_of_interest:
+        if k in profile:
+            lines.append(f"- `{k}`: {profile[k]}")
+            shown_any = True
+
+    if not shown_any:
+        # If schema is unknown, show a compact view of profile keys (but not everything)
+        preview_keys = list(profile.keys())[:12]
+        lines.append(f"- Available profile keys: {preview_keys} (schema depends on your profiling module)")
+
+    return "\n".join(lines)
+
+
 # -------------------------------------------------
-# Page config + styles (SAFE)
+# Page config + styles
 # -------------------------------------------------
 st.set_page_config(page_title="ML Model Selector Advisor", page_icon="🧠", layout="wide")
 
@@ -118,7 +166,6 @@ df = pd.read_csv(uploaded)
 # -------------------------------------------------
 with st.sidebar:
     st.header("⚙️ Settings")
-
     target_col = st.selectbox("Target column", ["(none)"] + list(df.columns))
     problem_hint = st.selectbox("Problem hint", ["Auto-detect", "Classification", "Regression"])
 
@@ -168,6 +215,10 @@ with tab1:
     reasons = simplify_rationale(rec.get("rationale", []))
     for r in dict.fromkeys(reasons):
         st.info(r, icon="💡")
+
+    # ✅ NEW: Advanced explanation (optional)
+    with st.expander("Advanced explanation (optional)"):
+        st.markdown(format_advanced_block(profile, rec))
 
     st.markdown("</div>", unsafe_allow_html=True)
 
