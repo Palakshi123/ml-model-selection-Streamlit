@@ -5,6 +5,8 @@ Upload a CSV, pick a target column, and this app will:
 - recommend a shortlist of ML models
 - optionally run a quick baseline pipeline (fast eval)
 
+Use it here: https://ml-model-selection-app-nd6pvhhe4g9hpyhbsrmmbk.streamlit.app/
+
 ## Run locally
 ```bash
 pip install -r requirements.txt
